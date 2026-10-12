@@ -1,127 +1,126 @@
-from manim import *
+from __future__ import annotations
 
-from animation.nodes import (
-    create_node,
-    create_edge,
-    highlight_node,
-    unhighlight_node,
-)
+from manim import DOWN, LEFT, RIGHT, UP, Circle, Create, FadeIn, FadeOut
+from manim import Line, Scene, Text, WHITE, YELLOW, Write
 
-from animation.paths import create_path_edge
+from bst import BST, BSTNode
 
-from animation.styles import (
-    CURRENT_COLOR,
-    NORMAL_TIME,
-    PAUSE_TIME,
-    TITLE_TEXT_SIZE,
-    INFO_TEXT_SIZE,
-)
+
+# Change these values to create a different insertion animation.
+KEYS = [50, 30, 70, 20, 40]
+NODE_RADIUS = 0.32
+LEVEL_GAP = 1.25
+MIN_HORIZONTAL_GAP = 0.9
+
+
+def _tree_depth(node: BSTNode[int] | None) -> int:
+    if node is None:
+        return 0
+    return 1 + max(_tree_depth(node.left), _tree_depth(node.right))
+
+
+def _assign_positions(
+    node: BSTNode[int] | None,
+    depth: int,
+    left: float,
+    right: float,
+    positions: dict[int, tuple[float, float]],
+) -> None:
+    if node is None:
+        return
+
+    x = (left + right) / 2
+    y = 1.8 - depth * LEVEL_GAP
+    positions[node.key] = (x, y)
+    _assign_positions(node.left, depth + 1, left, x, positions)
+    _assign_positions(node.right, depth + 1, x, right, positions)
+
+
+def _layout(tree: BST) -> dict[int, tuple[float, float]]:
+    depth = _tree_depth(tree.root)
+    width = max(6.0, (2 ** max(depth - 1, 0)) * MIN_HORIZONTAL_GAP)
+    positions: dict[int, tuple[float, float]] = {}
+    _assign_positions(tree.root, 0, -width / 2, width / 2, positions)
+    return positions
+
+
+def _node_mobject(value: int, position: tuple[float, float]) -> Circle:
+    node = Circle(radius=NODE_RADIUS, color=WHITE)
+    node.move_to((*position, 0))
+    node.add(Text(str(value), font_size=24))
+    return node
 
 
 class InsertionScene(Scene):
-    """Animate inserting a new node into a BST."""
+    """Animate building a BST from the configurable ``KEYS`` list."""
 
     def construct(self):
-        title = Text(
-            "Insert 40 into the BST",
-            font_size=TITLE_TEXT_SIZE,
-        )
+        if not KEYS:
+            raise ValueError("KEYS must contain at least one value.")
+
+        title = Text("Build a Binary Search Tree", font_size=38)
         title.to_edge(UP)
         self.play(Write(title))
-        self.wait(PAUSE_TIME)
+        tree = BST()
+        displayed_nodes: dict[int, Circle] = {}
+        displayed_edges: dict[tuple[int, int], Line] = {}
 
-        # Build the initial BST structure.
-        node_50 = create_node(50)
-        node_30 = create_node(30)
-        node_70 = create_node(70)
-        node_20 = create_node(20)
+        for value in KEYS:
+            if value in tree:
+                continue
 
-        node_50.move_to(UP * 1.5)
-        node_30.move_to(node_50.get_center() + LEFT * 2 + DOWN * 1.2)
-        node_70.move_to(node_50.get_center() + RIGHT * 2 + DOWN * 1.2)
-        node_20.move_to(node_30.get_center() + LEFT * 1 + DOWN * 1.2)
+            path = tree.search_path(value)
+            inserted = tree.insert(value)
+            positions = _layout(tree)
 
-        edge_50_30 = create_edge(node_50, node_30)
-        edge_50_70 = create_edge(node_50, node_70)
-        edge_30_20 = create_edge(node_30, node_20)
+            layout_animations = [
+                old_mobject.animate.move_to((*positions[key], 0))
+                for key, old_mobject in displayed_nodes.items()
+            ]
+            for (parent_key, child_key), edge in displayed_edges.items():
+                layout_animations.append(
+                    edge.animate.put_start_and_end_on(
+                        (*positions[parent_key], 0),
+                        (*positions[child_key], 0),
+                    )
+                )
+            if layout_animations:
+                self.play(*layout_animations, run_time=0.4)
 
-        self.play(
-            Create(edge_50_30),
-            Create(edge_50_70),
-            Create(edge_30_20),
-            FadeIn(node_50),
-            FadeIn(node_30),
-            FadeIn(node_70),
-            FadeIn(node_20),
-            run_time=NORMAL_TIME,
-        )
+            new_mobject = _node_mobject(value, positions[value])
+            displayed_nodes[value] = new_mobject
 
-        self.wait(PAUSE_TIME)
+            parent = inserted.parent
+            if parent is not None:
+                edge = Line(
+                    (*positions[parent.key], 0),
+                    (*positions[value], 0),
+                    color=WHITE,
+                )
+                displayed_edges[(parent.key, value)] = edge
+                self.play(Create(edge), FadeIn(new_mobject))
+            else:
+                self.play(FadeIn(new_mobject))
 
-        info = Text(
-            "Inserting 40",
-            font_size=INFO_TEXT_SIZE,
-        )
-        info.to_edge(DOWN)
-        self.play(Write(info))
-        self.wait(PAUSE_TIME)
+            for node in displayed_nodes.values():
+                node.set_color(WHITE)
 
-        # Compare 40 with the root.
-        self.play(highlight_node(node_50), run_time=NORMAL_TIME)
-        comparison_1 = Text(
-            "40 < 50  →  LEFT",
-            font_size=INFO_TEXT_SIZE,
-        )
-        comparison_1.next_to(info, UP)
-        self.play(Write(comparison_1))
+            comparison = Text(f"Insert {value}", font_size=28).to_edge(DOWN)
+            self.play(Write(comparison))
+            for node_key, direction in path:
+                if node_key is not None and direction in {"LEFT", "RIGHT"}:
+                    displayed_nodes[node_key].set_color(YELLOW)
+                    decision = Text(
+                        f"{value} {'<' if direction == 'LEFT' else '>'} "
+                        f"{node_key} -> {direction}",
+                        font_size=25,
+                    ).next_to(comparison, UP)
+                    self.play(Write(decision))
+                    self.wait(0.4)
+                    self.play(FadeOut(decision))
+                    displayed_nodes[node_key].set_color(WHITE)
+            self.play(FadeOut(comparison))
 
-        path_1 = create_path_edge(node_50, node_30)
-        self.play(Create(path_1), run_time=NORMAL_TIME)
-        self.wait(PAUSE_TIME)
-        self.play(FadeOut(comparison_1), unhighlight_node(node_50))
-
-        # Compare 40 with 30.
-        self.play(highlight_node(node_30), run_time=NORMAL_TIME)
-        comparison_2 = Text(
-            "40 > 30  →  RIGHT",
-            font_size=INFO_TEXT_SIZE,
-        )
-        comparison_2.next_to(info, UP)
-        self.play(Write(comparison_2))
-
-        # We will insert 40 as the right child of 30.
-        new_node_40 = create_node(40)
-        new_node_40.move_to(node_30.get_center() + RIGHT * 1 + DOWN * 1.2)
-
-        edge_30_40 = create_edge(node_30, new_node_40)
-
-        self.play(
-            Create(edge_30_40),
-            FadeIn(new_node_40),
-            run_time=NORMAL_TIME,
-        )
-
-        self.wait(PAUSE_TIME)
-
-        comparison_3 = Text(
-            "40 = inserted as the right child of 30",
-            font_size=INFO_TEXT_SIZE,
-        )
-        comparison_3.next_to(info, UP)
-        self.play(Transform(comparison_2, comparison_3))
-        self.wait(1)
-
-        self.play(
-            FadeOut(info),
-            FadeOut(comparison_3),
-            FadeOut(title),
-        )
-
-        result = Text(
-            "Insertion complete: 40 added to the tree",
-            font_size=INFO_TEXT_SIZE,
-        )
-        result.to_edge(DOWN)
+        result = Text("Insertion complete", font_size=30).to_edge(DOWN)
         self.play(Write(result))
-        self.wait(2)
-
+        self.wait(1)
