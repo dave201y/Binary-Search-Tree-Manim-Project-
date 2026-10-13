@@ -8,7 +8,7 @@ Render with:
 from manim import *
 
 from bst import BST  # adjust the import to match Person 1's module
-from scenes._p3_tree_view import (
+from _p3_tree_view import (
     CaptionMixin, TreeView, highlight, unhighlight, inorder_keys,
 )
 
