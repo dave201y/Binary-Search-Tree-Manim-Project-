@@ -13,9 +13,10 @@ from animation.styles import (BODY_FONT_SIZE, CURRENT_COLOR, NOT_FOUND_COLOR,
 
 # Demo inputs -- must match the team's storyboard.
 # (The guide's example is keys 50,30,70,20,40,60,65 and SEARCH_KEY = 65.)
-DEMO_KEYS = [50, 30, 70, 20, 40]
+'''DEMO_KEYS = [50, 30, 70, 20, 40]
 SEARCH_KEY = 40
-
+'''
+from demo_config import KEYS as DEMO_KEYS, SEARCH_KEY
 
 # ---------------------------------------------------------------------------
 # TEMPORARY stand-in until Person 1's BST is merged into main.

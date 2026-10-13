@@ -1,8 +1,8 @@
 from manim import *
 import numpy as np
 
-KEYS = [50, 30, 70, 20, 40]
-
+"KEYS = [50, 30, 70, 20, 40]"
+from demo_config import KEYS
 
 class InsertionScene(Scene):
     def construct(self):
