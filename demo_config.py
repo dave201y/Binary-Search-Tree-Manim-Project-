@@ -1,3 +1,8 @@
 KEYS = [50, 30, 70, 20, 40]
 SEARCH_KEY = 40
 DELETE_KEY = 30
+'''
+KEYS = [50, 30, 70, 20, 40, 60, 80, 65]
+SEARCH_KEY = 65
+DELETE_KEY = 50
+'''
