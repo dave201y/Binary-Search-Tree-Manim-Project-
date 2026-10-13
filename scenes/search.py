@@ -122,7 +122,7 @@ class SearchScene(Scene):
             self.play(FadeOut(label), run_time=T_FAST)
 
             if direction == "FOUND":
-                result = show_result(f"FOUND! {SEARCH_KEY} is in the tree")
+                result = show_result(f"FOUND {SEARCH_KEY}")
                 self.play(mark_found(node), Write(result))
                 break
             prev_key = node_key

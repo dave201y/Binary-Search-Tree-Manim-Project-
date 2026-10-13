@@ -126,19 +126,21 @@ class StatusPanel(VGroup):
         self.box = RoundedRectangle(corner_radius=0.15, width=self.WIDTH,
                                     height=self.HEIGHT, color=GRAY)
         self.lines = self._make_lines("-", "-")
-        self.add(self.box, self.lines)
+        self.add(self.lines)
 
     def _make_lines(self, compare, decision):
         rows = VGroup(
             Text("CURRENT OPERATION", font_size=18, color=GRAY),
             Text(f"{self.operation} key: {self.key}", font_size=24),
             Text(f"Compare: {compare}", font_size=24),
-            Text(f"Decision: {decision}", font_size=24, color=CURRENT_COLOR),
+            Text(f"{decision}", font_size=24, color=CURRENT_COLOR),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.18)
         rows.align_to(self.box, LEFT).shift(RIGHT * 0.3)
         rows.match_y(self.box)
         return rows
 
     def update_text(self, compare="-", decision="-"):
-        """Returns an animation that changes the text in place (no new panel)."""
-        return Transform(self.lines, self._make_lines(compare, decision))
+        new_lines = self._make_lines(compare, decision)
+        new_lines.align_to(self.lines, LEFT)
+        new_lines.align_to(self.lines, UP)
+        return Transform(self.lines, new_lines)
