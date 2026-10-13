@@ -7,6 +7,7 @@ Render with:
 """
 from manim import *
 
+from demo_config import KEYS, DELETE_KEY
 from bst import BST  # adjust the import to match Person 1's module
 from _p3_tree_view import (
     CaptionMixin, TreeView, highlight, unhighlight, inorder_keys,
@@ -70,48 +71,148 @@ class LeafAndOneChildDeletion(CaptionMixin, Scene):
 
 class TwoChildDeletion(CaptionMixin, Scene):
     def construct(self):
-        tree = build(SAMPLE)
+        self._caption = None
+
+        tree = build(KEYS)
         view = TreeView(tree.root, **TREE_KW)
-        title = Text("Delete a node with two children", font_size=34).to_edge(UP)
+
+        title = Text(
+            f"Delete {DELETE_KEY}",
+            font_size=34
+        ).to_edge(UP)
+
         self.play(Write(title))
         view.show(self)
 
-        # 1-2. Highlight 50 and detect two children
-        node50 = view.nodes[50]
-        self.play(highlight(node50, YELLOW))
-        self.say("Delete 50.")
-        self.say("Two children detected.")
+        target = tree.search(DELETE_KEY)
 
-        # 3-5. Walk to the smallest value in the right subtree
-        self.say("Find inorder successor.")
-        pointer = Circle(radius=0.42, color=GREEN, stroke_width=6).move_to(node50)
-        self.play(Create(pointer))
-        self.play(pointer.animate.move_to(view.nodes[70]))
-        self.say("Go right once, then left as far as possible.")
-        self.play(pointer.animate.move_to(view.nodes[60]))
-        self.say("60 has no left child, so it is the smallest value.")
-        self.play(highlight(view.nodes[60], GREEN))
-        self.say("Successor = 60.", color=GREEN)
+        if target is None:
+            self.say(
+                f"{DELETE_KEY} is not in the tree. Nothing changes."
+            )
+            self.wait(2)
+            return
 
-        # 6. Replace 50 with 60
-        self.say("Copy 60 into the place of 50.")
-        successor_copy = view.nodes[60].copy()
-        self.play(
-            successor_copy.animate.move_to(node50.get_center()),
-            FadeOut(node50),
-            FadeOut(pointer),
-        )
+        target_visual = view.nodes[DELETE_KEY]
+        self.play(highlight(target_visual, YELLOW))
+        self.say(f"Delete {DELETE_KEY}.")
 
-        # 7. Remove the old successor position (its child 65 moves up)
-        self.say("Remove the old 60. Its child 65 takes its place.")
-        self.play(FadeOut(view.nodes[60]))
-        del view.nodes[50]
-        view.nodes[60] = successor_copy
-        tree.delete(50)
-        view.relayout(self, tree.root, extra=[unhighlight(successor_copy)])
+        # Case 1: no children.
+        if target.left is None and target.right is None:
+            self.say("This node is a leaf. Remove it directly.")
 
-        # 8. Final tree, ordering preserved
+            self.play(FadeOut(target_visual))
+            del view.nodes[DELETE_KEY]
+
+            tree.delete(DELETE_KEY)
+            view.relayout(self, tree.root)
+
+        # Case 2: one child.
+        elif target.left is None or target.right is None:
+            child = target.left or target.right
+
+            self.say(
+                f"One child: {child.key} takes its place."
+            )
+
+            self.play(FadeOut(target_visual))
+            del view.nodes[DELETE_KEY]
+
+            tree.delete(DELETE_KEY)
+            view.relayout(self, tree.root)
+
+        # Case 3: two children.
+        else:
+            self.say(
+                f"{DELETE_KEY} has two children."
+            )
+            self.say(
+                "Find the smallest key in its right subtree."
+            )
+
+            pointer = Circle(
+                radius=0.42,
+                color=GREEN,
+                stroke_width=6
+            ).move_to(target_visual)
+
+            self.play(Create(pointer))
+
+            successor = target.right
+
+            self.play(
+                pointer.animate.move_to(
+                    view.nodes[successor.key]
+                )
+            )
+            self.say(
+                "Go right once, then left as far as possible."
+            )
+
+            while successor.left is not None:
+                successor = successor.left
+
+                self.play(
+                    pointer.animate.move_to(
+                        view.nodes[successor.key]
+                    )
+                )
+
+            successor_key = successor.key
+            successor_child = successor.right
+
+            self.play(
+                highlight(view.nodes[successor_key], GREEN)
+            )
+            self.say(
+                f"Successor = {successor_key}.",
+                color=GREEN
+            )
+            self.say(
+                f"{successor_key} replaces {DELETE_KEY}."
+            )
+
+            successor_copy = view.nodes[successor_key].copy()
+
+            self.play(
+                successor_copy.animate.move_to(
+                    target_visual.get_center()
+                ),
+                FadeOut(target_visual),
+                FadeOut(pointer)
+            )
+
+            if successor_child is None:
+                self.say(
+                    f"Remove {successor_key}'s old position."
+                )
+            else:
+                self.say(
+                    f"Its child {successor_child.key} "
+                    "takes the old successor position."
+                )
+
+            self.play(
+                FadeOut(view.nodes[successor_key])
+            )
+
+            del view.nodes[DELETE_KEY]
+            view.nodes[successor_key] = successor_copy
+
+            tree.delete(DELETE_KEY)
+
+            view.relayout(
+                self,
+                tree.root,
+                extra=[unhighlight(successor_copy)]
+            )
+
         order = inorder_keys(tree.root)
-        self.say("Inorder: " + " ".join(map(str, order)) + ". Still sorted.")
-        self.say("Left side is smaller than 60, right side is larger.")
-        self.wait(1)
+
+        self.say(
+            "Inorder: "
+            + ", ".join(map(str, order))
+            + ". Still sorted."
+        )
+        self.say("Deletion complete.")
+        self.wait(2)
